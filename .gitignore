@@ -1,0 +1,6 @@
+# Custom rules
+**/appsettings.json
+**/appsettings.Development.json
+**/.env
+**/bin/
+**/obj/
