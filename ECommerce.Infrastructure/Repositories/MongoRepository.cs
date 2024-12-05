@@ -7,21 +7,38 @@ using System.Threading.Tasks;
 using ECommerce.Core.Entities;
 using ECommerce.Core.Interfaces;
 using ECommerce.Infrastructure.Data;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace ECommerce.Infrastructure.Repositories
 {
     public class MongoRepository<T> : IRepository<T> where T : BaseEntity
     {
         private readonly IMongoCollection<T> _collection;
+        private readonly IMemoryCache _cache;
+        private readonly MemoryCacheEntryOptions _cacheOptions;
 
-        public MongoRepository(IMongoDatabase database)
+        public MongoRepository(IMongoDatabase database, IMemoryCache cache)
         {
             _collection = database.GetCollection<T>(typeof(T).Name);
+            _cache = cache;
+            _cacheOptions = new MemoryCacheEntryOptions()
+                .SetSlidingExpiration(TimeSpan.FromMinutes(5));
         }
 
         public async Task<IEnumerable<T>> GetAllAsync()
         {
-            return await _collection.Find(_ => true).ToListAsync();
+            var cacheKey = $"{typeof(T).Name}_all";
+            if (_cache.TryGetValue(cacheKey, out IEnumerable<T>? items) && items != null)
+            {
+                return items;
+            }
+            
+            items = await _collection.Find(_ => true).ToListAsync();
+            if (items != null)
+            {
+                _cache.Set(cacheKey, items, _cacheOptions);
+            }
+            return items ?? Enumerable.Empty<T>();
         }
 
         public async Task<T> GetByIdAsync(string id)

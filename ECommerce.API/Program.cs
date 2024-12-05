@@ -11,6 +11,9 @@ using FluentValidation;
 using ECommerce.Infrastructure.Settings;
 using MongoDB.Driver;
 using ECommerce.Infrastructure.Services;
+using MongoDB.Bson.Serialization;
+using ECommerce.Core.Entities;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,7 +30,7 @@ builder.Services.AddSwaggerGen(c =>
         Description = "An ASP.NET Core Web API for ECommerce",
         Contact = new OpenApiContact
         {
-            Name = "Your Name",
+            Name = "Khang Phan",
             Email = "phkhang003@gmail.com"
         }
     });
@@ -36,6 +39,11 @@ builder.Services.AddSwaggerGen(c =>
 // MongoDB Configuration
 builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDB"));
 builder.Services.AddSingleton<MongoDbContext>();
+builder.Services.AddSingleton<IMongoClient>(sp => {
+    var settings = sp.GetRequiredService<IOptions<MongoDbSettings>>().Value;
+    return new MongoClient(settings.ConnectionString);
+});
+
 builder.Services.AddSingleton<IMongoDatabase>(sp => 
 {
     var mongoDbContext = sp.GetRequiredService<MongoDbContext>();
@@ -48,19 +56,14 @@ builder.Services.AddScoped(typeof(IRepository<>), typeof(MongoRepository<>));
 // AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-// Redis Configuration
-builder.Services.AddStackExchangeRedisCache(options =>
-{
-    options.Configuration = builder.Configuration.GetSection("Redis:ConnectionString").Value;
-});
-
 // Application Services
-builder.Services.AddScoped<ICacheService, RedisCacheService>();
 builder.Services.AddScoped<IFileService, FileService>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ICategoryApplicationService, CategoryService>();
 
 // Validators
 builder.Services.AddScoped<IValidator<CreateProductDto>, CreateProductDtoValidator>();
+builder.Services.AddScoped<IValidator<CreateCategoryDto>, CreateCategoryDtoValidator>();
 
 // HTTPS Configuration
 builder.Services.AddHttpsRedirection(options =>
@@ -68,6 +71,28 @@ builder.Services.AddHttpsRedirection(options =>
     options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
     options.HttpsPort = 7064;
 });
+
+BsonClassMap.RegisterClassMap<BaseEntity>(cm => {
+    cm.AutoMap();
+    cm.SetIgnoreExtraElements(true);
+    cm.MapMember(c => c.CreatedAt);
+    cm.MapMember(c => c.UpdatedAt);
+});
+
+BsonClassMap.RegisterClassMap<Category>(cm => {
+    cm.AutoMap();
+    cm.SetIgnoreExtraElements(true);
+});
+
+BsonClassMap.RegisterClassMap<Product>(cm => {
+    cm.AutoMap();
+    cm.SetIgnoreExtraElements(true);
+});
+
+builder.Services.AddMemoryCache();
+
+// Thêm MongoDB Cache Service
+builder.Services.AddScoped<ICacheService, MongoCacheService>();
 
 var app = builder.Build();
 

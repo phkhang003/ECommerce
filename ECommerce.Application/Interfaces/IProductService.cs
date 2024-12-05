@@ -6,10 +6,10 @@ namespace ECommerce.Application.Interfaces
 {
     public interface IProductService
     {
-        Task<PagedResult<ProductDto>> GetProductsAsync(ProductParameters parameters);
-        Task<ProductDto> GetProductByIdAsync(string id);
-        Task<ProductDto> CreateProductAsync(CreateProductDto productDto);
-        Task<ProductDto> UpdateProductAsync(string id, UpdateProductDto productDto);
+        Task<PagedResult<ProductResponseDto>> GetProductsAsync(ProductParameters parameters);
+        Task<ProductResponseDto> GetProductByIdAsync(string id);
+        Task<ProductResponseDto> CreateProductAsync(CreateProductDto productDto);
+        Task<ProductResponseDto> UpdateProductAsync(string id, UpdateProductDto productDto);
         Task DeleteProductAsync(string id);
         Task<ProductDto> AddProductImageAsync(string id, IFormFile image);
         Task<ProductDto> UpdateStockAsync(string id, int quantity);

@@ -4,6 +4,7 @@ using ECommerce.Application.Interfaces;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
 using ECommerce.Application.Models;
+using AutoMapper;
 
 namespace ECommerce.API.Controllers
 {
@@ -14,26 +15,34 @@ namespace ECommerce.API.Controllers
         private readonly IProductService _productService;
         private readonly IValidator<CreateProductDto> _createProductValidator;
         private readonly ILogger<ProductsController> _logger;
+        private readonly IMapper _mapper;
 
         public ProductsController(
             IProductService productService,
             IValidator<CreateProductDto> createProductValidator,
-            ILogger<ProductsController> logger)
+            ILogger<ProductsController> logger,
+            IMapper mapper)
         {
             _productService = productService;
             _createProductValidator = createProductValidator;
             _logger = logger;
+            _mapper = mapper;
         }
 
         [HttpGet]
-        public async Task<ActionResult<PagedResult<ProductDto>>> GetProducts([FromQuery] ProductParameters parameters)
+        public async Task<ActionResult<PagedResult<ProductResponseDto>>> GetProducts([FromQuery] ProductParameters parameters)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             var products = await _productService.GetProductsAsync(parameters);
             return Ok(products);
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<ProductDto>> GetProduct(string id)
+        public async Task<ActionResult<ProductResponseDto>> GetProduct(string id)
         {
             var product = await _productService.GetProductByIdAsync(id);
             if (product == null)
@@ -43,8 +52,9 @@ namespace ECommerce.API.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<ProductDto>> CreateProduct(CreateProductDto productDto)
+        public async Task<ActionResult<ProductResponseDto>> CreateProduct([FromForm] CreateProductFormModel model)
         {
+            var productDto = _mapper.Map<CreateProductDto>(model);
             var validationResult = await _createProductValidator.ValidateAsync(productDto);
             if (!validationResult.IsValid)
                 return BadRequest(validationResult.Errors);
@@ -54,10 +64,11 @@ namespace ECommerce.API.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<ActionResult<ProductDto>> UpdateProduct(string id, [FromBody] UpdateProductDto productDto)
+        public async Task<ActionResult<ProductResponseDto>> UpdateProduct(string id, [FromForm] UpdateProductFormModel model)
         {
             try
             {
+                var productDto = _mapper.Map<UpdateProductDto>(model);
                 var updatedProduct = await _productService.UpdateProductAsync(id, productDto);
                 if (updatedProduct == null)
                 {
